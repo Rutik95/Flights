@@ -32,6 +32,9 @@ public class Airport {
 	@Column(nullable = false)
 	private String zoneId;
 
+	// No equals/hashCode on purpose: an id-based version breaks while id is still null (before save).
+	// Compare airports by code instead.
+
 	/** Required by JPA (Hibernate instantiates entities via reflection). Not for application code. */
 	protected Airport() {
 	}
