@@ -3,7 +3,11 @@ import type { Airport, FlightSearchParams, FlightSearchResponse } from "./types"
 // Server-side only: these functions are called from Server Components, so the browser never
 // talks to the Spring Boot API directly (and we need no CORS setup yet).
 // No NEXT_PUBLIC_ prefix on purpose: this variable is not exposed to the browser bundle.
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8080";
+// Read at request time (not build time), so one Docker image works in every environment:
+// http://localhost:8080 in dev, http://backend:8080 inside Docker Compose.
+function apiBaseUrl(): string {
+  return process.env.API_BASE_URL ?? "http://localhost:8080";
+}
 
 export class ApiError extends Error {
   constructor(
@@ -15,11 +19,12 @@ export class ApiError extends Error {
 }
 
 async function getJson<T>(path: string): Promise<T> {
+  const baseUrl = apiBaseUrl();
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`);
+    response = await fetch(`${baseUrl}${path}`);
   } catch {
-    throw new ApiError(`Cannot reach the SkyBook API at ${API_BASE_URL}. Is the backend running?`);
+    throw new ApiError(`Cannot reach the SkyBook API at ${baseUrl}. Is the backend running?`);
   }
 
   if (!response.ok) {
