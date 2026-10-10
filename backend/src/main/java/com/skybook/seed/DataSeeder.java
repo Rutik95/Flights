@@ -121,7 +121,7 @@ public class DataSeeder implements ApplicationRunner {
 
 	private void addDailyFlights(List<Flight> flights, Route route, Airport origin, Airport destination,
 			int flightNumberBase, Instant now) {
-		ZoneId originZone = ZoneId.of(origin.getZoneId());
+		ZoneId originZone = origin.getZone();
 		LocalDate today = LocalDate.now(originZone);
 
 		for (int day = 0; day < DAYS_TO_SEED; day++) {

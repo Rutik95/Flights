@@ -1,5 +1,7 @@
 package com.skybook.airport;
 
+import java.time.ZoneId;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -69,5 +71,9 @@ public class Airport {
 
 	public String getZoneId() {
 		return zoneId;
+	}
+
+	public ZoneId getZone() {
+		return ZoneId.of(zoneId);
 	}
 }
