@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: skybook
+      POSTGRES_USER: skybook
+      POSTGRES_PASSWORD: skybook
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18+ images expect the volume at /var/lib/postgresql
+      # (older versions used /var/lib/postgresql/data)
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skybook -d skybook"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

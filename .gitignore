@@ -1,0 +1,15 @@
+# Repo-wide ignores. backend/ and frontend/ have their own .gitignore for build output.
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Editors
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
