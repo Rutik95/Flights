@@ -1,0 +1,12 @@
+# Let Git normalise line endings for text files...
+* text=auto
+
+# ...but files that run inside Linux containers must always keep LF,
+# even when checked out on Windows (CRLF breaks shell scripts and Dockerfile line continuations).
+Dockerfile text eol=lf
+*.sh text eol=lf
+mvnw text eol=lf
+docker-compose.yml text eol=lf
+
+# Windows scripts keep CRLF
+*.cmd text eol=crlf
