@@ -5,13 +5,12 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.skybook.airport.Airport;
 import com.skybook.airport.AirportRepository;
+import com.skybook.common.InvalidRequestException;
 
 @Service
 public class FlightService {
@@ -26,13 +25,10 @@ public class FlightService {
 
 	// Entities are mapped to DTOs inside the transaction: with open-in-view=false,
 	// touching a lazy association after this method returns would throw LazyInitializationException.
+	// Input shape (required fields, ranges, return >= depart) is already validated by Bean Validation
+	// in the controller; the service checks what only it can know, like whether an airport exists.
 	@Transactional(readOnly = true)
 	public FlightSearchResponse search(FlightSearchRequest request) {
-		// TODO (Step 2): replace ResponseStatusException with domain exceptions + @ControllerAdvice
-		if (request.isRoundTrip() && request.returnDate().isBefore(request.date())) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "returnDate must not be before date");
-		}
-
 		Airport origin = findAirport(request.origin());
 		Airport destination = findAirport(request.destination());
 
@@ -59,6 +55,6 @@ public class FlightService {
 
 	private Airport findAirport(String code) {
 		return airportRepository.findByCode(code)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown airport: " + code));
+				.orElseThrow(() -> new InvalidRequestException("Unknown airport: " + code));
 	}
 }

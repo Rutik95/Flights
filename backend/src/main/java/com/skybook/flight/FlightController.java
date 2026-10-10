@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/api/flights")
 public class FlightController {
@@ -20,7 +22,7 @@ public class FlightController {
 	 * Add returnDate=2026-10-20 for a round trip.
 	 */
 	@GetMapping("/search")
-	public FlightSearchResponse search(@ModelAttribute FlightSearchRequest request) {
+	public FlightSearchResponse search(@Valid @ModelAttribute FlightSearchRequest request) {
 		return flightService.search(request);
 	}
 }

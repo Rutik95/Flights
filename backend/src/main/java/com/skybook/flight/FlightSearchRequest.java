@@ -4,16 +4,24 @@ import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 /**
- * Query parameters of GET /api/flights/search, bound by Spring MVC into one object.
- * A missing returnDate means one-way. Bean Validation annotations are added in Step 2.
+ * Query parameters of GET /api/flights/search, bound by Spring MVC into one object and
+ * validated with Bean Validation (@Valid in the controller). A missing returnDate means one-way.
+ * Field annotations check each value; {@link ValidFlightSearch} checks rules across fields.
  */
+@ValidFlightSearch
 public record FlightSearchRequest(
-		String origin,
-		String destination,
-		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+		@NotBlank @Size(min = 3, max = 3, message = "must be a 3-letter airport code") String origin,
+		@NotBlank @Size(min = 3, max = 3, message = "must be a 3-letter airport code") String destination,
+		@NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate returnDate,
-		Integer passengers,
+		@Min(1) @Max(9) Integer passengers,
 		FlightSort sort) {
 
 	// Compact constructor: applies defaults for optional parameters

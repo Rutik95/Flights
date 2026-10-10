@@ -28,11 +28,24 @@ async function getJson<T>(path: string): Promise<T> {
   }
 
   if (!response.ok) {
-    // Spring's error JSON has a "message" field (we'll standardise this in Step 2)
-    const body = await response.json().catch(() => null);
-    throw new ApiError(body?.message ?? `Request failed with status ${response.status}`, response.status);
+    throw new ApiError(await errorMessage(response), response.status);
   }
   return response.json() as Promise<T>;
+}
+
+/** RFC 9457 problem details, as returned by the backend's GlobalExceptionHandler. */
+type ProblemDetail = {
+  title?: string;
+  status?: number;
+  detail?: string;
+  errors?: Record<string, string>;
+};
+
+async function errorMessage(response: Response): Promise<string> {
+  const problem: ProblemDetail | null = await response.json().catch(() => null);
+  const detail = problem?.detail ?? `Request failed with status ${response.status}`;
+  const fieldErrors = Object.entries(problem?.errors ?? {}).map(([field, msg]) => `${field} ${msg}`);
+  return fieldErrors.length > 0 ? `${detail}: ${fieldErrors.join(", ")}` : detail;
 }
 
 export function getAirports(): Promise<Airport[]> {
