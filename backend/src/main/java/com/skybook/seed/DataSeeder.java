@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +27,9 @@ import com.skybook.flight.Flight;
 import com.skybook.flight.FlightRepository;
 
 /**
- * Loads sample data once on startup. Each part is idempotent: it is skipped if its table
- * already has rows, so restarts don't create duplicates.
+ * Loads sample data on startup. Idempotent, so restarts don't create duplicates:
+ * airports are seeded once; flights are topped up so there are always flights for the next
+ * {@value #DAYS_TO_SEED} days (important for a long-running deployment, not just a fresh database).
  */
 @Component
 public class DataSeeder implements ApplicationRunner {
@@ -97,11 +99,6 @@ public class DataSeeder implements ApplicationRunner {
 	}
 
 	private void seedFlights() {
-		if (flightRepository.count() > 0) {
-			log.info("Flights already seeded, skipping");
-			return;
-		}
-
 		Map<String, Airport> airportsByCode = airportRepository.findAll().stream()
 				.collect(Collectors.toMap(Airport::getCode, Function.identity()));
 
@@ -115,17 +112,30 @@ public class DataSeeder implements ApplicationRunner {
 			addDailyFlights(flights, route, b, a, route.flightNumberBase() + 1, now);
 		}
 
+		if (flights.isEmpty()) {
+			log.info("Flights already scheduled for the next {} days", DAYS_TO_SEED);
+			return;
+		}
 		flightRepository.saveAll(flights);
-		log.info("Seeded {} flights for the next {} days", flights.size(), DAYS_TO_SEED);
+		log.info("Added {} flights to keep the next {} days scheduled", flights.size(), DAYS_TO_SEED);
 	}
 
 	private void addDailyFlights(List<Flight> flights, Route route, Airport origin, Airport destination,
 			int flightNumberBase, Instant now) {
 		ZoneId originZone = origin.getZone();
 		LocalDate today = LocalDate.now(originZone);
+		LocalDate endExclusive = today.plusDays(DAYS_TO_SEED);
 
-		for (int day = 0; day < DAYS_TO_SEED; day++) {
-			LocalDate date = today.plusDays(day);
+		// Continue after the last day already in the database (in the origin's local date),
+		// or start today if this route has no flights yet or the data is stale.
+		LocalDate firstDate = flightRepository
+				.findLatestDeparture(route.airline(), origin.getCode(), destination.getCode())
+				.map(latest -> latest.atZone(originZone).toLocalDate().plusDays(1))
+				.filter(next -> next.isAfter(today))
+				.orElse(today);
+
+		for (LocalDate date = firstDate; date.isBefore(endExclusive); date = date.plusDays(1)) {
+			boolean lastMinute = ChronoUnit.DAYS.between(today, date) < LAST_MINUTE_DAYS;
 			for (int i = 0; i < DEPARTURE_SLOTS.size(); i++) {
 				DepartureSlot slot = DEPARTURE_SLOTS.get(i);
 
@@ -137,7 +147,7 @@ public class DataSeeder implements ApplicationRunner {
 
 				BigDecimal fare = route.baseFare()
 						.multiply(slot.fareFactor())
-						.multiply(day < LAST_MINUTE_DAYS ? LAST_MINUTE_FACTOR : BigDecimal.ONE)
+						.multiply(lastMinute ? LAST_MINUTE_FACTOR : BigDecimal.ONE)
 						.setScale(0, RoundingMode.HALF_UP) // whole rupees
 						.setScale(2);
 

@@ -2,6 +2,7 @@ package com.skybook.flight;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -24,4 +25,15 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
 			@Param("from") Instant from,
 			@Param("to") Instant to,
 			@Param("passengers") int passengers);
+
+	/** Latest scheduled departure of one airline on one route; empty if none (used by the seeder). */
+	@Query("""
+			select max(f.departureTime) from Flight f
+			where f.airline = :airline
+			  and f.origin.code = :origin
+			  and f.destination.code = :destination
+			""")
+	Optional<Instant> findLatestDeparture(@Param("airline") String airline,
+			@Param("origin") String origin,
+			@Param("destination") String destination);
 }

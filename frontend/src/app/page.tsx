@@ -3,6 +3,10 @@ import { Suspense } from "react";
 import { SearchForm } from "@/components/SearchForm";
 import { SearchResults } from "@/components/SearchResults";
 
+// Max seconds this page may run on serverless hosting (Vercel). The free plan allows up to 60;
+// needed because a sleeping backend can take close to a minute to answer the first request.
+export const maxDuration = 60;
+
 // Not async: the page itself never awaits searchParams. It passes the promise down to the
 // components that need it, each inside <Suspense>. With Cache Components enabled, everything
 // outside the boundaries (header, fallbacks) is prerendered as a static shell and shown

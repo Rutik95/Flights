@@ -1,4 +1,11 @@
+import { cacheLife } from "next/cache";
+
 import type { Airport, FlightSearchParams, FlightSearchResponse } from "./types";
+
+// On free hosting the backend sleeps when idle and needs up to a minute to wake up.
+// Give up a bit before the platform's function time limit (maxDuration in page.tsx),
+// so the user gets a friendly message instead of a platform timeout page.
+const REQUEST_TIMEOUT_MS = 45_000;
 
 // Server-side only: these functions are called from Server Components, so the browser never
 // talks to the Spring Boot API directly (and we need no CORS setup yet).
@@ -22,8 +29,13 @@ async function getJson<T>(path: string): Promise<T> {
   const baseUrl = apiBaseUrl();
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}${path}`);
-  } catch {
+    response = await fetch(`${baseUrl}${path}`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new ApiError(
+        "The SkyBook server is waking up (free hosting sleeps when idle). Please try again in about a minute.",
+      );
+    }
     throw new ApiError(`Cannot reach the SkyBook API at ${baseUrl}. Is the backend running?`);
   }
 
@@ -48,8 +60,22 @@ async function errorMessage(response: Response): Promise<string> {
   return fieldErrors.length > 0 ? `${detail}: ${fieldErrors.join(", ")}` : detail;
 }
 
-export function getAirports(): Promise<Airport[]> {
+// Airports rarely change, so cache them: the search form renders instantly from the cache,
+// even while the backend is asleep. Errors are not cached, so a failed call is retried next time.
+async function getAirportsCached(): Promise<Airport[]> {
+  "use cache";
+  cacheLife("hours");
   return getJson<Airport[]>("/api/airports");
+}
+
+export async function getAirports(): Promise<Airport[]> {
+  try {
+    return await getAirportsCached();
+  } catch (error) {
+    // Errors thrown inside a "use cache" function lose their class when they cross the cache
+    // boundary, so turn them back into an ApiError (keeping the message) for the callers.
+    throw new ApiError(error instanceof Error ? error.message : "Could not load airports.");
+  }
 }
 
 export function searchFlights(params: FlightSearchParams): Promise<FlightSearchResponse> {
